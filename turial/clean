@@ -1,0 +1,4 @@
+rm calc3a calc3b calc3g calc1 calc2
+rm lex.yy.o y.tab.o
+rm lex.yy.c y.tab.c
+rm y.tab.h
