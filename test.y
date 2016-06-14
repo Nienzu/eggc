@@ -41,11 +41,11 @@ extern FILE *yyin;
 %type <nPtr> function stmt expr expr_list stmt_list
 %%
 program:
-  function                { exit(0); }
+  function                { freeNode($1);exit(0); }
   ;
 function:
     function stmt         { $$ = opr(';', 2, $1, $2); }
-  | /* NULL */
+  | /* NULL */            { $$ = calloc(1,sizeof(nodeType));}
   ;
 stmt:
     ';'                     { $$ = opr(';', 2, NULL, NULL); }
@@ -91,7 +91,7 @@ expr:
   | expr AND expr         { $$ = opr(AND, 2, $1, $3);}
   | expr OR expr          { $$ = opr(OR, 2, $1, $3);}
   | '(' expr ')'          { $$ = $2; }
-  | ID '(' expr_list ')'  { $$ = opr('*', 2, $1, $3);}
+  | ID '(' expr_list ')'  { $$ = opr('%', 2, id($1), $3);}
   ;
 expr_list:
   expr                    { $$ = $1; }
@@ -102,7 +102,7 @@ param_list:
   | type ID '[' ']'       { $$ = argu($1,$2,1); }
   | type ID ',' param_list  { $$ = argu_append($1,$2,$4,0); }
   | type ID '[' ']' ',' param_list  { $$ = argu_append($1,$2,$6,1); }
-  |
+  | { $$ = calloc(1,sizeof(argulist));}
   ;
 %%
   #define SIZEOF_NODETYPE ((char *)&p->con - (char *)p)
@@ -132,13 +132,13 @@ param_list:
   nodeType *fun(char *i,char *y,argulist *d,nodeType *p){
     nodeType *n;
     /* allocate node */
-    if ((p = malloc(sizeof(nodeType))) == NULL)
+    if ((n = malloc(sizeof(nodeType))) == NULL)
         yyerror("out of memory");
-    p->type = typeFun;
-    p->funptr.type = strdup(i);
-    p->funptr.name = strdup(y);
-    p->funptr.argu = d;
-    p->funptr.op = p;
+    n->type = typeFun;
+    n->funptr.type = strdup(i);
+    n->funptr.name = strdup(y);
+    n->funptr.argu = d;
+    n->funptr.op = p;
     return n;
   }
   nodeType *id_array(char *i,int value){
@@ -159,6 +159,7 @@ param_list:
     /* allocate node */
     if ((p = malloc(sizeof(nodeType))) == NULL)
         yyerror("out of memory");
+    p->type = typeDef;
     p->def.type = strdup(i);
     p->def.name = strdup(j);
     p->def.is_array = -1;
@@ -169,6 +170,7 @@ param_list:
     /* allocate node */
     if ((p = malloc(sizeof(nodeType))) == NULL)
         yyerror("out of memory");
+    p->type = typeDef;
     p->def.type = strdup(i);
     p->def.name = strdup(y);
     p->def.is_array = value;
@@ -215,9 +217,17 @@ param_list:
 void freeNode(nodeType *p) {
     int i;
     if (!p) return;
+    if (p->type == 0) return;
+    printf("%d %d\n",p->type,p);
+    if (p->type == 2) printf("%s\n",p->id.i);
     if (p->type == typeOpr) {
+        printf("in Opr\n");
         for (i = 0; i < p->opr.nops; i++)
             freeNode(p->opr.op[i]);
+    }
+    else if(p->type == typeFun){
+      printf("in Fun\n");
+      freeNode(p->funptr.op);
     }
     free (p);
 }
