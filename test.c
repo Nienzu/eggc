@@ -20,6 +20,7 @@ int idMain ( ) {
 
     idResult = ( idA + idB ) * idB ;
     print idResult;
+	idResult = idA - idB + idResult * idResult ;
 
     idResult = idA + idB - idA * idB / 1 ;
     print idResult ;

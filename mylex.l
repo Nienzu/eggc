@@ -16,14 +16,23 @@ NUMBER	[0-9]
 
 %%
 [ \t]+      { /* Ignore whitespace */ }
-"int"	return TYPE;
+"int"	return INT;
+"char"	return CHAR;
 \n		lineno++;
+0		{yylval=strdup(yytext);return INTEGER;}
 [-()<>=+*/;,.{}] {
 			  	return *yytext;
 			  }
 "["		return '[';
 "]"		return ']';
-[1-9]({NUMBER})+     {
+"=="	return EQ;
+"break"	return BREAK;
+"!="	return NE;
+"<="	return LE;
+">="	return GE;
+"&&"	return AND;
+"||"	return OR;
+[1-9]({NUMBER})*     {
 				yylval = strdup(yytext); 
 				return INTEGER;
 			  }
