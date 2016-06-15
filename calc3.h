@@ -50,8 +50,8 @@ extern int sym[26];
 typedef struct stackNodeType{
 	int con;
 	char *id;
-	int stacktype; // 0:con 1:variable
+	int stacktype; // 0:con 1:variable 2:register 3:array
 	struct stackNodeType *top;
 	struct stackNodeType *down;
-
+  int is_array;
 }stack;
