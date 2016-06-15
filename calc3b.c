@@ -9,21 +9,17 @@
 int variable[30]; //[0-7]($s0-$s7) + [8-30](1-23)*4($sp)
 static int lbl_IF=0;
 static int lbl_WHILE=0;
-<<<<<<< HEAD
 int count=0;
 int in_while = 0;
 int sss[30]= {};
 stack *now;
 static int trindex=0;
 char tr[5];
-<<<<<<< HEAD
 char iflist[7] = "IF";
-=======
 static int srindex=0;
 char sr[5];
 int init=0;
 
->>>>>>> origin/master
 stack *push(stack *node)
 {
     stack *new=malloc(sizeof(stack));
