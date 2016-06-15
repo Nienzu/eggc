@@ -36,15 +36,19 @@ extern FILE *yyin;
 %nonassoc UMINUS '!'
 %type <sIndex> type
 %type <aPtr> param_list
-%type <nPtr> function stmt expr expr_list stmt_list
+%type <nPtr> function block stmt expr expr_list stmt_list
 %%
 program:
   function                {ex($1); freeNode($1);exit(0); }
   ;
 function:
-    function stmt         { $$ = opr(';', 2, $1, $2); }
+    function block         { $$ = opr(';', 2, $1, $2); }
   | /* NULL */            { $$ = calloc(1,sizeof(nodeType));}
   ;
+block:
+  type ID ';'               {$$ = d_id($1,$2);}
+  | type ID '[' NUM ']' ';' {$$ = d_id_array($1,$2,$4);}
+  | type ID '(' param_list ')' '{' stmt_list '}' {$$ = fun($1, $2, $4, $7);}
 stmt:
     ';'                     { $$ = opr(';', 2, NULL, NULL); }
   | expr ';'                { $$ = $1; }
@@ -58,7 +62,6 @@ stmt:
   | IF '(' expr ')' stmt ELSE stmt
                             { $$ = opr(IF, 3, $3, $5, $7); }
   | '{' stmt_list '}'       { $$ = $2; }
-  | type ID '(' param_list ')' '{' stmt_list '}' {$$ = fun($1, $2, $4, $7);}
   ;
 stmt_list:
     stmt                  { $$ = $1; }

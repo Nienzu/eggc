@@ -26,6 +26,7 @@ id[A-Z][a-z]* {
 "=="            {return EQ;}
 "!="            {return NE;}
 "return"        {return RETURN;}
+"break"         {return BREAK;}
 "while"         {return WHILE;}
 "if"            {return IF;}
 "else"          {return ELSE;}
