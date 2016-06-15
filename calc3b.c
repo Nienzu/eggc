@@ -47,14 +47,8 @@ int ex(nodeType *p)
     int label_WHILE;
     int size_array;
     if(now == NULL) {
-<<<<<<< HEAD
         now = malloc(sizeof(stack));
         now->down=now;
-=======
-        now = malloc(sizeof(stack*));
-        now->down = malloc(sizeof(stack *));
-        now->top = malloc(sizeof(stack *));
->>>>>>> origin/master
     }
     if (!p) return 0;
     switch(p->type) {
