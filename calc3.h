@@ -45,3 +45,13 @@ typedef struct arguListTag {
   struct arguListTag *next;
 } argulist;
 extern int sym[26];
+
+
+typedef struct stackNodeType{
+	int con;
+	char *id;
+	int stacktype; // 0:con 1:variable
+	struct stackNodeType *top;
+	struct stackNodeType *down;
+
+}stack;

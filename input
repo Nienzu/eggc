@@ -1,1 +1,7 @@
-1+1
+int idMain(){
+  idXsss = 0;
+  while(idXsss<10){
+	idXsss = idXsss + 1;
+  }
+  return 0;
+}

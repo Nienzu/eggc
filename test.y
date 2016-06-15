@@ -31,17 +31,15 @@ extern FILE *yyin;
 %token <sIndex> ID
 %token WHILE IF PRINT READ BREAK RETURN <sIndex> CHAR INT
 %nonassoc ELSE
-%left GE LE EQ NE '>' '<'
-%left '+' '-'
-%left '*' '/'
-%nonassoc AND OR
+%left '+' '-' '*' '/' GE LE EQ NE '>' '<'
+%left AND OR
 %nonassoc UMINUS '!'
 %type <sIndex> type
 %type <aPtr> param_list
 %type <nPtr> function stmt expr expr_list stmt_list
 %%
 program:
-  function                { freeNode($1);exit(0); }
+  function                {ex($1); freeNode($1);exit(0); }
   ;
 function:
     function stmt         { $$ = opr(';', 2, $1, $2); }
@@ -218,15 +216,14 @@ void freeNode(nodeType *p) {
     int i;
     if (!p) return;
     if (p->type == 0) return;
-    printf("%d %d\n",p->type,p);
-    if (p->type == 2) printf("%s\n",p->id.i);
+    if (p->type == 2)
     if (p->type == typeOpr) {
-        printf("in Opr\n");
+
         for (i = 0; i < p->opr.nops; i++)
             freeNode(p->opr.op[i]);
     }
     else if(p->type == typeFun){
-      printf("in Fun\n");
+
       freeNode(p->funptr.op);
     }
     free (p);
@@ -235,7 +232,7 @@ void yyerror(char *s) {
     fprintf(stdout, "%s\n", s);
 }
 int main(void) {
-    yyin = fopen("test.c","r");
+    yyin = fopen("input","r");
     yyparse();
     return 0;
 }

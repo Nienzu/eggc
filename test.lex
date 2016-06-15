@@ -7,40 +7,40 @@ void yyerror(char *);
 %}
 %%
 id[A-Z][a-z]* {
-                yylval.sIndex = strdup(yytext);ECHO;
+                yylval.sIndex = strdup(yytext);
                 return ID;
             }
 0           {
-                yylval.iValue = atoi(yytext);ECHO;
+                yylval.iValue = atoi(yytext);
                 return NUM;
             }
 [1-9][0-9]* {
-                yylval.iValue = atoi(yytext);ECHO;
+                yylval.iValue = atoi(yytext);
                 return NUM;
             }
-[-()<>=+*/;{}.,!] {ECHO;
+[-()<>=+*/;{}.,!] {
                 return *yytext;
              }
-">="            {ECHO;return GE;}
-"<="            {ECHO;return LE;}
-"=="            {ECHO;return EQ;}
-"!="            {ECHO;return NE;}
-"return"        {ECHO;return RETURN;}
-"while"         {ECHO;return WHILE;}
-"if"            {ECHO;return IF;}
-"else"          {ECHO;return ELSE;}
-"print"         {ECHO;return PRINT;}
-"read"          {ECHO;return READ;}
-"int"           {ECHO;yylval.sIndex = strdup(yytext);return INT;}
-"char"          {ECHO;yylval.sIndex = strdup(yytext);return CHAR;}
-"&&"            {ECHO;return AND;}
-"||"            {ECHO;return OR;}
-"["             {ECHO;return *yytext;}
-"]"             {ECHO;return *yytext;}
+">="            {return GE;}
+"<="            {return LE;}
+"=="            {return EQ;}
+"!="            {return NE;}
+"return"        {return RETURN;}
+"while"         {return WHILE;}
+"if"            {return IF;}
+"else"          {return ELSE;}
+"print"         {return PRINT;}
+"read"          {return READ;}
+"int"           {yylval.sIndex = strdup(yytext);return INT;}
+"char"          {yylval.sIndex = strdup(yytext);return CHAR;}
+"&&"            {return AND;}
+"||"            {return OR;}
+"["             {return *yytext;}
+"]"             {return *yytext;}
 
 
 [ \t\n]+        ;       /* ignore whitespace */
-.               {ECHO;yyerror("Unknown character");}
+.               {yyerror("Unknown character");}
 %%
 int yywrap(void) {
     return 1;

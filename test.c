@@ -1,11 +1,13 @@
-int idFunction ( int idVal1 , int idVal2 ) {
+int idFunction ( int idVal1 , int idVal2 )
+{
     int idSum ;
     idSum = idVal1 + idVal2 ;
     print idSum ;
     return idSum ;
 }
 
-int idMain ( ) {
+int idMain ( )
+{
     int idA ;
     int idB ;
     int idResult ;
@@ -20,7 +22,7 @@ int idMain ( ) {
 
     idResult = ( idA + idB ) * idB ;
     print idResult;
-	idResult = idA - idB + idResult * idResult ;
+    idResult = idA - idB + idResult * idResult ;
 
     idResult = idA + idB - idA * idB / 1 ;
     print idResult ;
@@ -28,8 +30,7 @@ int idMain ( ) {
     if ( idA > idB ) {
         idResult = idA - idB ;
         print idResult ;
-    }
-    else {
+    } else {
         idResult = idB - idA ;
         print idResult ;
     }
