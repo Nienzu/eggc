@@ -16,6 +16,7 @@ argulist *argu(char *i,char *y,int value);
 argulist *argu_append(char *i,char *y,argulist *d,int value);
 void freeNode(nodeType *p);
 int ex(nodeType *p);
+int ex_def(nodeType *p);
 int yylex(void);
 void yyerror(char *s);
 int sym[26];                    /* symbol table */
@@ -39,7 +40,7 @@ extern FILE *yyin;
 %type <nPtr> function block stmt expr expr_list stmt_list
 %%
 program:
-  function                {ex($1); freeNode($1);exit(0); }
+  function                {ex_def($1);ex($1); freeNode($1);exit(0); }
   ;
 function:
     function block         { $$ = opr(';', 2, $1, $2); }
