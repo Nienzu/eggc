@@ -207,11 +207,7 @@ int ex(nodeType *p)
                     ex(p->opr.op[1]);
                     switch(p->opr.oper) {
                         case '+':
-<<<<<<< HEAD
                             sprintf(tr,"$t%d", trindex);
-                            printf("\tadd %s, ",tr);
-=======
->>>>>>> origin/master
                             count=2;
                             while(count!=0) {
                                 switch(now->down->stacktype) {
@@ -220,15 +216,15 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0){
-                                            printf("\tadd $t0, %d, %d\n", now->down->con, op1);
+                                            printf("\tadd %s, %d, %d\n", tr, now->down->con, op1);
                                           }
                                         else if(count == 1 && typeop1 == 1){
                                             printf("\tlw $s%d, %s", srindex, op2);
-                                            printf("\tadd $t0, %d, $s%d\n",now->down->con, srindex);
+                                            printf("\tadd %s, %d, $s%d\n", tr,now->down->con, srindex);
                                           }
                                         else if(count == 1 && typeop1 == 3){
                                           printf("\tlw $s%d, %d(%s)",srindex, size_array*4, op2);
-                                          printf("\tadd $t0, %d, $s%d\n", now->down->con, srindex);
+                                          printf("\tadd %s, %d, $s%d\n", tr, now->down->con, srindex);
                                         }
                                         pop(now);
                                         break;
@@ -238,20 +234,20 @@ int ex(nodeType *p)
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0){
                                             printf("\tlw $s%d, %s", srindex, now->down->id);
-                                            printf("\tadd $t0, $s%d, %d\n", srindex, op1);
+                                            printf("\tadd %s, $s%d, %d\n", tr, srindex, op1);
                                           }
                                         else if(count == 1 && typeop1 == 1){
                                             printf("\tlw $s%d, %s", srindex, now->down->id);
                                             srindex++;
                                             printf("\tlw $s%d, %s", srindex, op2);
-                                            printf("\tadd $t0, $s%d, $s%d\n", srindex-1, srindex);
+                                            printf("\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                           }
                                           else if(count == 1 && typeop1 == 3){
                                             printf("\tlw $s%d, %s", srindex, now->down->id);
                                             srindex++;
                                             printf("\tlw $s%d, %d(%s)",srindex, size_array*4, op2);
-                                            printf("\tadd $t0, $s%d, $s%d\n", srindex-1, srindex);
+                                            printf("\tadd %s, $s%d, $s%d\n", tr,srindex-1, srindex);
                                             srindex--;
                                           }
                                         pop(now);
@@ -263,20 +259,20 @@ int ex(nodeType *p)
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0){
                                             printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tadd $t0, $s%d, %d\n", srindex, op1);
+                                            printf("\tadd %s, $s%d, %d\n", tr, srindex, op1);
                                           }
                                         else if(count == 1 && typeop1 == 1){
                                             printf("\tlw $s%d, %s\n", srindex, now->down->id);
                                             srindex++;
                                             printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tadd $t0, $s%d, $s%d\n", srindex-1, srindex);
+                                            printf("\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                           }
                                           else if(count == 1 && typeop1 == 3){
                                             printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
                                             srindex++;
                                             printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tadd $t0, $s%d, $s%d\n", srindex-1, srindex);
+                                            printf("\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                           }
                                         pop(now);
