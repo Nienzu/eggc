@@ -23,6 +23,8 @@ static int srindex=0;
 char sr[5];
 int init=0;
 char now_function[30];
+//for function call
+int call_count=0;
 
 
 stack *push(stack *node)
@@ -191,6 +193,15 @@ int ex(nodeType *p)
                     break;
                 case RETURN:
                     break;
+                case '%':
+                    printf("-----ARGUEMTN-----\n");
+                    /*TODO: store $s0-$s7 and $t0-$t7 to stack.*/
+                    /*TODO: put the argument into $a0-$a3*/
+                    ex_call(p->opr.op[1]);
+                    call_count=0;
+                    printf("\tjal %s\n",p->opr.op[0]->id.i);
+                    break;
+
                 case '=':
                     ex(p->opr.op[1]);
                     //printf("\t %s, ", p->opr.op[0]->id.i);
@@ -1174,6 +1185,7 @@ int ex(nodeType *p)
 
                             break;
                     }
+
             }
     }
     return 0;
@@ -1231,6 +1243,34 @@ int ex_def(nodeType *p)
                 default:
                     break;
             }
+    }
+    return 0;
+}
+
+int ex_call(nodeType *p)
+{
+    if (!p) return 0;
+    switch(p->type) {
+        case typeCon:
+            printf("\tli $a%d, %d\n",call_count, p->con.value);
+            call_count++;
+            break;
+        case typeId:
+            printf("\tlw $s%d, %s\n",srindex, p->id.i);
+            printf("\tmove $a%d, $s%d\n", call_count, srindex);
+            call_count++;
+            break;
+        case typeOpr:
+            switch(p->opr.oper) {
+                case ',':
+                    ex_call(p->opr.op[0]);
+                    ex_call(p->opr.op[1]);
+                    break;
+                default:
+                    break;
+            }
+        default:
+            break;
     }
     return 0;
 }
