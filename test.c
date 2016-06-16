@@ -1,10 +1,4 @@
-int idFunction ( int idVal1 , int idVal2 )
-{
-    int idSum ;
-    idSum = idVal1 + idVal2 ;
-    print idSum ;
-    return idSum ;
-}
+
 
 int idMain ( )
 {
@@ -44,9 +38,9 @@ int idMain ( )
     idArray [ 1 ] = 5 ;
     idArray [ 6 ] = 10 ;
     idResult = idArray [ 1 ] + idArray [ 6 ];
-    print idArray;
+    print idResult;
 
-    idResult = idFunction ( idA , idB ) ;
+
     print idResult ;
 
     return 0 ;

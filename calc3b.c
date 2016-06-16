@@ -121,7 +121,7 @@ int ex(nodeType *p)
                     sprintf(&tmp,"%d",label_IF);
                     iflist[strlen(iflist)] = tmp;
                     ex(p->opr.op[0]);
-                    fprintf(yyout,"\tbeq %s, 1, %s\n", tr, iflist);
+                    fprintf(yyout,"\tbne %s, 1, %s\n", tr, iflist);
                     ex(p->opr.op[1]);
                     label_IF = lbl_IF;
                     sprintf(&tmp,"%d",label_IF+1);
@@ -194,12 +194,14 @@ int ex(nodeType *p)
                 case RETURN:
                     break;
                 case '%':
-                    printf("-----ARGUEMTN-----\n");
+
+                    //printf("-----ARGUEMTN-----\n");
                     /*TODO: store $s0-$s7 and $t0-$t7 to stack.*/
                     /*TODO: put the argument into $a0-$a3*/
-                    ex_call(p->opr.op[1]);
-                    call_count=0;
-                    printf("\tjal %s\n",p->opr.op[0]->id.i);
+                    //ex_call(p->opr.op[1]);
+                    //call_count=0;
+
+                    fprintf(yyout,"\tjal %s\n",p->opr.op[0]->id.i);
                     break;
 
                 case '=':
@@ -212,11 +214,17 @@ int ex(nodeType *p)
                                 fprintf(yyout,"\tsw $t0, %s_%s\n", now_function,p->opr.op[0]->id.i);
                                 break;
                             case 1:
-                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                if(now->down->id[0] == '$')
+                                  fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                else
+                                  fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %s_%s\n", srindex, now_function,p->opr.op[0]->id.i);
                                 break;
                             case 2:
-                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                if(now->down->id[0] == '$')
+                                  fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                else
+                                  fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %s_%s\n", srindex, now_function,p->opr.op[0]->id.i);
                                 break;
                             case 3: //array
@@ -236,12 +244,18 @@ int ex(nodeType *p)
                                 break;
                             case 1:
                                 fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
-                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
+                                if(now->down->id[0] == '$')
+                                  fprintf(yyout,"\tmove $s%d, %s_%s\n", srindex+1, now->down->id);
+                                else
+                                  fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
                                 break;
                             case 2:
                                 fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
-                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
+                                if(now->down->id[0] == '$')
+                                  fprintf(yyout,"\tmove $s%d, %s_%s\n", srindex+1, now->down->id);
+                                else
+                                  fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
                                 break;
                             case 3: //array
@@ -270,979 +284,1266 @@ int ex(nodeType *p)
                     ex(p->opr.op[0]);
                     ex(p->opr.op[1]);
                     switch(p->opr.oper) {
-                        case '+':
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, now->down->con);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                      case '+':
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tadd %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tadd %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tadd %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tadd %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case '-':
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tli $s%d, %d",srindex+1,op1);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+2);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case '-':
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case '*':
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case '*':
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case '/':
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case '/':
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case '<':
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case '<':
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case '>':
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case '>':
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case GE:
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case GE:
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case LE:
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case LE:
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case NE:
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case NE:
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case EQ:
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case EQ:
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case AND:
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
-                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case AND:
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
-                        case OR:
-                            sprintf(tr,"$t%d", trindex);
-                            count=2;
-                            while(count!=0) {
-                                switch(now->down->stacktype) {
-                                    case 0:
-                                        if(count == 2) {
-                                            op1 = now->down->con;
-                                            typeop1 = 0;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
-                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex, srindex+1);
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex+1,now->down->con);
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 1:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 1;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
-                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
-                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
-                                            srindex--;
-                                        }
-                                        pop(now);
-                                        break;
-                                    case 3:
-                                        if(count==2) {
-                                            op2 = now->down->id;
-                                            typeop1 = 3;
-                                            size_array = now->down->is_array;
-                                        } else if(count == 1 && typeop1 == 0) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
-                                        } else if(count == 1 && typeop1 == 1) {
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
-                                            srindex++;
-                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
-                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
-                                        } else if(count == 1 && typeop1 == 3) {
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
-                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
-                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
-                                        }
-                                        pop(now);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                count--;
-                            }
-                            now->stacktype=1;
-                            sprintf(tr,"$t%d", trindex);
-                            trindex++;
-                            now->id = strdup(tr);
-                            now = push(now);
+                          break;
+                      case OR:
+                          sprintf(tr,"$t%d", trindex);
+                          count=2;
+                          while(count!=0) {
+                              switch(now->down->stacktype) {
+                                  case 0:
+                                      if(count == 2) {
+                                          op1 = now->down->con;
+                                          typeop1 = 0;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                          fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex, srindex+1);
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex+1,now->down->con);
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 1:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 1;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                          fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                          srindex++;
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                          fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
+                                          srindex--;
+                                      }
+                                      pop(now);
+                                      break;
+                                  case 3:
+                                      if(count==2) {
+                                          op2 = now->down->id;
+                                          typeop1 = 3;
+                                          size_array = now->down->is_array;
+                                      } else if(count == 1 && typeop1 == 0) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
+                                      } else if(count == 1 && typeop1 == 1) {
+                                          if(now->down->id[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                          srindex++;
+                                          if(op2[0] == '$')
+                                              fprintf(yyout,"\tmove $s%d, %s\n", srindex,op2);
+                                          else
+                                              fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                          fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                          srindex--;
+                                      } else if(count == 1 && typeop1 == 3) {
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                          fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
+                                      }
+                                      pop(now);
+                                      break;
+                                  default:
+                                      break;
+                              }
+                              count--;
+                          }
+                          now->stacktype=1;
+                          sprintf(tr,"$t%d", trindex);
+                          trindex++;
+                          now->id = strdup(tr);
+                          now = push(now);
 
-                            break;
+                          break;
                     }
 
             }
@@ -1267,7 +1568,7 @@ int ex_def(nodeType *p)
             strcpy(now_function,p->funptr.name);
             a = p->funptr.argu;
             while(a->id!=NULL){
-              fprintf(yyout,"%s_%s:\t",now_function,p->def.name);
+              fprintf(yyout,"%s_%s:\t",now_function,a->id);
               if(a->array == 0) {
                   if(strcmp(a->type, "int") == 0) {
                       fprintf(yyout,".word\t0\n");

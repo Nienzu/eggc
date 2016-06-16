@@ -1,13 +1,9 @@
-int idFunction(){
-  int idXaa;
-  int idXbb[2];
-  char idXcc[3];
-}
 int idMain(){
-  int idXsss;
-  char idXccc;
-  print idXsss;
-  print idXbb[2];
-  print idXccc;
+  int idXsss[10];
+  int idX;
+  idXsss[3] = 1;
+  idXsss[4] = 2;
+  idX = idXsss[3] + idXsss[4];
+  print idX;
   return 0;
 }
