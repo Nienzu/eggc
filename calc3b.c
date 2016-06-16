@@ -25,6 +25,7 @@ int init=0;
 char now_function[30];
 //for function call
 int call_count=0;
+extern FILE *yyout;
 
 
 stack *push(stack *node)
@@ -76,23 +77,23 @@ int ex(nodeType *p)
             break;
         case typeFun:
             if(init==0) {
-                printf("\t.text\n");
-                printf("\t.globl main\n");
+                fprintf(yyout,"\t.text\n");
+                fprintf(yyout,"\t.globl main\n");
                 init++;
             }
             if(strcmp(p->funptr.name, "idMain")==0) {
-                printf("main:\n");
+                fprintf(yyout,"main:\n");
             } else {
-                printf("%s:\n",p->funptr.name);
+                fprintf(yyout,"%s:\n",p->funptr.name);
 
             }
             strcpy(now_function,p->funptr.name);
             ex(p->funptr.op);
             if(strcmp(p->funptr.name, "idMain")==0) {
-                printf("\tli $v0, 10\n");
-                printf("\tsyscall\n");
+                fprintf(yyout,"\tli $v0, 10\n");
+                fprintf(yyout,"\tsyscall\n");
             } else {
-                printf("\tjr $ra\n");
+                fprintf(yyout,"\tjr $ra\n");
             }
             break;
         case typeDef:
@@ -102,16 +103,16 @@ int ex(nodeType *p)
             switch(p->opr.oper) {
                 case WHILE:
                     label_WHILE=lbl_WHILE;
-                    printf("while%d:\n",label_WHILE);
+                    fprintf(yyout,"while%d:\n",label_WHILE);
                     lbl_WHILE++;
                     ex(p->opr.op[0]);
-                    printf("\tbne %s, 1, while%d\n", tr,label_WHILE+1);
+                    fprintf(yyout,"\tbne %s, 1, while%d\n", tr,label_WHILE+1);
                     in_while = 1;
                     ex(p->opr.op[1]);
                     trindex=0;
                     ex(p->opr.op[0]);
-                    printf("\tbeq %s, 1, while%d\n", tr,label_WHILE);
-                    printf("while%d:\n", label_WHILE+1);
+                    fprintf(yyout,"\tbeq %s, 1, while%d\n", tr,label_WHILE);
+                    fprintf(yyout,"while%d:\n", label_WHILE+1);
                     lbl_WHILE++;
                     in_while = 0;
                     break;
@@ -120,20 +121,20 @@ int ex(nodeType *p)
                     sprintf(&tmp,"%d",label_IF);
                     iflist[strlen(iflist)] = tmp;
                     ex(p->opr.op[0]);
-                    printf("\tbeq %s, 1, %s\n", tr, iflist);
+                    fprintf(yyout,"\tbeq %s, 1, %s\n", tr, iflist);
                     ex(p->opr.op[1]);
                     label_IF = lbl_IF;
                     sprintf(&tmp,"%d",label_IF+1);
                     iflist[strlen(iflist) - 1] = tmp;
-                    printf("\tb %s\n", iflist);
+                    fprintf(yyout,"\tb %s\n", iflist);
                     iflist[strlen(iflist) - 1] = tmp-1;
-                    printf("%s:\n",  iflist);
+                    fprintf(yyout,"%s:\n",  iflist);
                     lbl_IF++;
                     ex(p->opr.op[2]);
                     label_IF = lbl_IF;
                     sprintf(&tmp,"%d",label_IF);
                     iflist[strlen(iflist) - 1] = tmp;
-                    printf("%s:\n", iflist);
+                    fprintf(yyout,"%s:\n", iflist);
                     lbl_IF++;
                     if(iflist[strlen(iflist) - 1] - iflist[strlen(iflist) - 2] == 1)
                         lbl_IF = iflist[strlen(iflist) - 2] - '0';
@@ -144,7 +145,7 @@ int ex(nodeType *p)
                     break;
                 case BREAK:
                     if(in_while == 1)
-                        printf("\tb while%d\n",lbl_WHILE);
+                        fprintf(yyout,"\tb while%d\n",lbl_WHILE);
                     break;
                 case READ:
                     current = head;
@@ -158,15 +159,14 @@ int ex(nodeType *p)
                     }
                     id_type = current->type;
                     if(id_type == 1){
-                      printf("\tli $v0, 5\n");
-                      printf("\tsyscall\n");
-                      printf("\tsw $v0, %s\n",p->opr.op[0]->id.i);
+                      fprintf(yyout,"\tli $v0, 5\n");
+                      fprintf(yyout,"\tsyscall\n");
+                      fprintf(yyout,"\tsw $v0, %s_%s\n",now_function,p->opr.op[0]->id.i);
                     }
                     else if(id_type == 0){
-                      printf("\tli $v0, 8\n");
-                      printf("\tli $a1, 1\n");
-                      printf("\rla $a0, %s\n",p->opr.op[0]->id.i);
-                      printf("\tsyscall\n");
+                      fprintf(yyout,"\tli $v0, 12\n");
+                      fprintf(yyout,"\tsyscall\n");
+                      fprintf(yyout,"\tsw $v0, %s_%s\n",now_function,p->opr.op[0]->id.i);
                     }
                     break;
                 case PRINT:
@@ -181,14 +181,14 @@ int ex(nodeType *p)
                     }
                     id_type = current->type;
                     if(id_type == 1){
-                      printf("\tli $v0, 1\n");
-                      printf("\tlw $a0, %s\n",p->opr.op[0]->id.i);
-                      printf("\tsyscall\n");
+                      fprintf(yyout,"\tli $v0, 1\n");
+                      fprintf(yyout,"\tlw $a0, %s_%s\n",now_function,p->opr.op[0]->id.i);
+                      fprintf(yyout,"\tsyscall\n");
                     }
                     else if(id_type == 0){
-                      printf("\tli $v0, 4\n");
-                      printf("\tla $a0, %s\n",p->opr.op[0]->id.i);
-                      printf("\tsyscall\n");
+                      fprintf(yyout,"\tli $v0, 11\n");
+                      fprintf(yyout,"\tlw $a0, %s_%s\n",now_function,p->opr.op[0]->id.i);
+                      fprintf(yyout,"\tsyscall\n");
                     }
                     break;
                 case RETURN:
@@ -208,18 +208,21 @@ int ex(nodeType *p)
                     if(p->opr.op[0]->id.is_array == -1) {
                         switch(now->down->stacktype) {
                             case 0:
-                                printf("\tlw $s%d, %s\n",srindex, p->opr.op[0]->id.i);
-                                printf("\tmove $s%d, %d\n", srindex, now->down->con);
-                                printf("\tsw $s%d, %s\n", srindex, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tli $t0, %d\n",now->down->con);
+                                fprintf(yyout,"\tsw $t0, %s_%s\n", now_function,p->opr.op[0]->id.i);
                                 break;
                             case 1:
-                                printf("\tsw %s, %s\n", now->down->id, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                fprintf(yyout,"\tsw $s%d, %s_%s\n", srindex, now_function,p->opr.op[0]->id.i);
                                 break;
                             case 2:
-                                printf("\tsw %s, %s\n", now->down->id, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                fprintf(yyout,"\tsw $s%d, %s_%s\n", srindex, now_function,p->opr.op[0]->id.i);
                                 break;
                             case 3: //array
-                                printf("\tsw %d(%s), %s\n", now->down->is_array*4, now->down->id, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,now->down->id);
+                                fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex +1,now->down->is_array*4,srindex);
+                                fprintf(yyout,"\tsw $s%d, %s_%s\n", srindex, now_function,p->opr.op[0]->id.i);
                             default:
                                 printf("ERROR");
                                 break;
@@ -227,25 +230,32 @@ int ex(nodeType *p)
                     } else {
                         switch(now->down->stacktype) {
                             case 0:
-                                printf("\tlw $s%d, %d(%s)\n", srindex, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
-                                printf("\tmove $s%d, %d\n", srindex, now->down->con);
-                                printf("\tsw $s%d, %d(%s)\n", srindex, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tla $s%d, %s_%s\n", srindex,now_function, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tli $t0, %d\n",now->down->con);
+                                fprintf(yyout,"\tsw $t0, %d($s%d)\n", p->opr.op[0]->id.is_array*4,srindex);
                                 break;
                             case 1:
-                                printf("\tsw %s, %d(%s)\n", now->down->id, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
+                                fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
                                 break;
                             case 2:
-                                printf("\tsw %s, %d(%s)\n", now->down->id, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
+                                fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
                                 break;
                             case 3: //array
-                                printf("\tsw %d(%s), %d(%s)\n", now->down->is_array*4, now->down->id, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,now->down->id);
+                                fprintf(yyout,"\tla $s%d, %s_%s\n", srindex+1, now_function, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex +2,now->down->is_array*4,srindex);
+                                fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+2, p->opr.op[0]->id.is_array*4,srindex+1);
                             default:
                                 printf("ERROR");
                                 break;
                         }
                     }
                     pop(now);
-                    printf("\n");
+                    fprintf(yyout,"\n");
                     trindex = 0;
                     break;
                 case UMINUS:
@@ -270,13 +280,15 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tadd %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tadd %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, now->down->con);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tadd %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -285,19 +297,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tadd %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tadd %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -308,20 +321,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tadd %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\taddi %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tadd %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tadd %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -347,13 +360,18 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tsub %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex+1,op1);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsub %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsub %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex, srindex+2);
                                         }
                                         pop(now);
                                         break;
@@ -362,19 +380,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsub %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsub %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -385,20 +404,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsub %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tsub %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsub %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tsub %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -424,13 +443,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tmul %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tmul %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tmul %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -439,19 +461,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tmul %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tmul %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -462,20 +485,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tmul %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tmul %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tmul %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tmul %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -501,13 +524,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tdiv %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tdiv %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tdiv %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -516,19 +542,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tdiv %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tdiv %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -539,20 +566,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tdiv %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tdiv %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tdiv %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tdiv %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -578,13 +605,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tslt %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tslt %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tslt %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -593,19 +623,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tslt %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tslt %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -616,20 +647,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tslt %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tslt %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tslt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tslt %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -655,13 +686,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tsgt %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsgt %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsgt %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -670,19 +704,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsgt %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsgt %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -693,20 +728,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsgt %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tsgt %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsgt %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tsgt %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -732,13 +767,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tsge %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s", srindex, op2);
-                                            printf("\tsge %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsge %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -747,19 +785,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsge %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsge %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -770,20 +809,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsge %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tsge %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsge %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tsge %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -809,13 +848,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tsle %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsle %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsle %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -824,19 +866,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsle %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsle %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -847,20 +890,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsle %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tsle %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsle %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tsle %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -886,13 +929,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tsne %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsne %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsne %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -901,19 +947,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsne %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsne %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -924,20 +971,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tsne %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tsne %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tsne %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tsne %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -963,13 +1010,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tseq %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tseq %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tseq %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -978,19 +1028,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tseq %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tseq %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -1001,20 +1052,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tseq %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tseq %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tseq %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tseq %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -1040,13 +1091,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tand %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tand %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tand %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -1055,19 +1109,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tand %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tand %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -1078,20 +1133,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tand %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tand %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tand %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tand %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -1117,13 +1172,16 @@ int ex(nodeType *p)
                                             op1 = now->down->con;
                                             typeop1 = 0;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tor %s, %d, %d\n", tr, now->down->con, op1);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tor %s, %d, $s%d\n", tr,now->down->con, srindex);
+                                            fprintf(yyout,"\tli $s%d, %d",srindex,now->down->con);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,op2);
+                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex, srindex+1);
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tor %s, %d, $s%d\n", tr, now->down->con, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex+1,now->down->con);
                                         }
                                         pop(now);
                                         break;
@@ -1132,19 +1190,20 @@ int ex(nodeType *p)
                                             op2 = now->down->id;
                                             typeop1 = 1;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tor %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,op2);
+                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tor %s, $s%d, $s%d\n", tr,srindex-1, srindex);
+                                            fprintf(yyout,"\tla $s%d, %s_%s",srindex, now_function,op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1, size_array*4, srindex);
+                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr,srindex-1, srindex+1);
                                             srindex--;
                                         }
                                         pop(now);
@@ -1155,20 +1214,20 @@ int ex(nodeType *p)
                                             typeop1 = 3;
                                             size_array = now->down->is_array;
                                         } else if(count == 1 && typeop1 == 0) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
-                                            printf("\tor %s, $s%d, %d\n", tr, srindex, op1);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tor %s, $s%d, %d\n", tr, srindex, op1);
                                         } else if(count == 1 && typeop1 == 1) {
-                                            printf("\tlw $s%d, %s\n", srindex, now->down->id);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, now->down->id);
                                             srindex++;
-                                            printf("\tlw $s%d, %s\n", srindex, op2);
-                                            printf("\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function, op2);
+                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
                                             srindex--;
                                         } else if(count == 1 && typeop1 == 3) {
-                                            printf("\tlw $s%d, %d(%s)\n", srindex, now->down->is_array*4, now->down->id);
-                                            srindex++;
-                                            printf("\tlw $s%d, %d(%s)\n",srindex, size_array*4, op2);
-                                            printf("\tor %s, $s%d, $s%d\n", tr, srindex-1, srindex);
-                                            srindex--;
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex+1, now_function, op2);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+2, now->down->is_array*4, srindex);
+                                            fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+3, size_array*4, srindex+1);
+                                            fprintf(yyout,"\tor %s, $s%d, $s%d\n", tr, srindex+2, srindex+3);
                                         }
                                         pop(now);
                                         break;
@@ -1192,8 +1251,9 @@ int ex(nodeType *p)
 }
 int ex_def(nodeType *p)
 {
+    argulist *a;
     if(count==0) {
-        printf("\t.data\n");
+        fprintf(yyout,"\t.data\n");
         count++;
     }
     if(head == NULL){
@@ -1203,7 +1263,29 @@ int ex_def(nodeType *p)
     if (!p) return 0;
     switch(p->type) {
         case typeFun:
+            bzero(now_function,30);
             strcpy(now_function,p->funptr.name);
+            a = p->funptr.argu;
+            while(a->id!=NULL){
+              fprintf(yyout,"%s_%s:\t",now_function,p->def.name);
+              if(a->array == 0) {
+                  if(strcmp(a->type, "int") == 0) {
+                      fprintf(yyout,".word\t0\n");
+                  } else {
+                      fprintf(yyout,".asciiz\t\"\"\n");
+                  }
+              } else {
+                  if(strcmp(a->type, "int") == 0) {
+                      fprintf(yyout,".space\t%d\n", 32*4);
+                  } else {
+                      fprintf(yyout,".space\t%d\n", 32);
+                  }
+              }
+              if(a->next != NULL)
+                a = a->next;
+              else
+                break;
+          }
             ex_def(p->funptr.op);
             break;
         case typeDef:
@@ -1219,18 +1301,18 @@ int ex_def(nodeType *p)
                 current->type = 0;
             }
             current = next;
-            printf("%s:\t",p->def.name);
+            fprintf(yyout,"%s_%s:\t",now_function,p->def.name);
             if(p->def.is_array == -1) {
                 if(strcmp(p->def.type, "int") == 0) {
-                    printf(".word\t0\n");
+                    fprintf(yyout,".word\t0\n");
                 } else {
-                    printf(".asciiz\t\"\"\n");
+                    fprintf(yyout,".asciiz\t\"\"\n");
                 }
             } else {
                 if(strcmp(p->def.type, "int") == 0) {
-                    printf(".space\t%d\n", p->def.is_array*4);
+                    fprintf(yyout,".space\t%d\n", p->def.is_array*4);
                 } else {
-                    printf(".space\t%d\n", p->def.is_array);
+                    fprintf(yyout,".space\t%d\n", p->def.is_array);
                 }
             }
             break;
