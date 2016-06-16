@@ -20,6 +20,7 @@ int ex_def(nodeType *p);
 int yylex(void);
 void yyerror(char *s);
 int sym[26];                    /* symbol table */
+int fun_count;
 extern FILE *yyin;
 extern FILE *yyout;
 %}
@@ -98,7 +99,7 @@ expr:
   ;
 expr_list:
   expr                    { $$ = $1; }
-  | expr_list ',' expr    { $$ = opr(',', 2, $1, $3); }
+  | expr ',' expr_list    { $$ = opr(',', 2, $1, $3); }
   ;
 param_list:
   type ID                 { $$ = argu($1,$2,0); }
@@ -142,6 +143,7 @@ param_list:
     n->funptr.name = strdup(y);
     n->funptr.argu = d;
     n->funptr.op = p;
+    ++fun_count;
     return n;
   }
   nodeType *id_array(char *i,int value){

@@ -25,6 +25,8 @@ int init=0;
 char now_function[30];
 //for function call
 int call_count=0;
+extern int fun_count;
+arguRecord *argu_array;
 extern FILE *yyout;
 
 
@@ -55,6 +57,7 @@ int ex(nodeType *p)
     int label_WHILE;
     int size_array;
     int id_type = -1;
+    int i;
     if(now == NULL) {
         now = malloc(sizeof(stack));
         now->down=now;
@@ -192,18 +195,35 @@ int ex(nodeType *p)
                     }
                     break;
                 case RETURN:
+                    if(p->opr.op[0]->type == typeCon)
+                      fprintf(yyout,"\tli $v0, %d\n",p->opr.op[0]->con.value);
+                    else
+                      fprintf(yyout,"\tlw $v0, %s_%s\n",now_function,p->opr.op[0]->id.i);
                     break;
                 case '%':
-
-                    //printf("-----ARGUEMTN-----\n");
-                    /*TODO: store $s0-$s7 and $t0-$t7 to stack.*/
-                    /*TODO: put the argument into $a0-$a3*/
-                    //ex_call(p->opr.op[1]);
-                    //call_count=0;
-
+                    i = 0;
+                    while(strcmp(argu_array[i].fun_name,p->opr.op[0]->id.i) != 0)
+                      ++i;
+                    if(p->opr.op[1]->type != typeOpr){
+                      fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,p->opr.op[1]->id.i);
+                      fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,argu_array[i].argu->id);
+                    }
+                    else{
+                      nodeType *t = p->opr.op[1];
+                      argulist *a = argu_array[i].argu;
+                      while(t->type == typeOpr){
+                        fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,t->opr.op[0]->id.i);
+                        fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                        t = t->opr.op[1];
+                        a = a->next;
+                      }
+                      fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,t->id.i);
+                      fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                    }
                     fprintf(yyout,"\tjal %s\n",p->opr.op[0]->id.i);
+                    now->stacktype = 4;
+                    now = push(now);
                     break;
-
                 case '=':
                     ex(p->opr.op[1]);
                     //printf("\t %s, ", p->opr.op[0]->id.i);
@@ -231,6 +251,10 @@ int ex(nodeType *p)
                                 fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function,now->down->id);
                                 fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex +1,now->down->is_array*4,srindex);
                                 fprintf(yyout,"\tsw $s%d, %s_%s\n", srindex, now_function,p->opr.op[0]->id.i);
+                                break;
+                            case 4: //function call
+                                fprintf(yyout,"\tsw $v0, %s_%s\n",now_function,p->opr.op[0]->id.i);
+                                break;
                             default:
                                 printf("ERROR");
                                 break;
@@ -263,6 +287,10 @@ int ex(nodeType *p)
                                 fprintf(yyout,"\tla $s%d, %s_%s\n", srindex+1, now_function, p->opr.op[0]->id.i);
                                 fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex +2,now->down->is_array*4,srindex);
                                 fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+2, p->opr.op[0]->id.is_array*4,srindex+1);
+                                break;
+                            case 4:
+                                fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
+                                fprintf(yyout,"\tsw $v0, %d($s%d)\n", p->opr.op[0]->id.is_array*4,srindex);
                             default:
                                 printf("ERROR");
                                 break;
@@ -1554,8 +1582,9 @@ int ex_def(nodeType *p)
 {
     argulist *a;
     if(count==0) {
+        start = p;
+        argu_array = calloc(fun_count,sizeof(arguRecord));
         fprintf(yyout,"\t.data\n");
-        count++;
     }
     if(head == NULL){
       head = malloc(sizeof(deflist));
@@ -1567,6 +1596,9 @@ int ex_def(nodeType *p)
             bzero(now_function,30);
             strcpy(now_function,p->funptr.name);
             a = p->funptr.argu;
+            argu_array[count].fun_name = strdup(now_function);
+            argu_array[count].argu = a;
+            ++count;
             while(a->id!=NULL){
               fprintf(yyout,"%s_%s:\t",now_function,a->id);
               if(a->array == 0) {

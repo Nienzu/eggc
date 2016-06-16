@@ -63,3 +63,8 @@ typedef struct defNodeList{
   char *fun_name;
   struct defNodeList *next;
 }deflist;
+
+typedef struct arguReTag{
+  char *fun_name;
+  argulist *argu;
+}arguRecord;
