@@ -21,6 +21,7 @@ int yylex(void);
 void yyerror(char *s);
 int sym[26];                    /* symbol table */
 extern FILE *yyin;
+extern FILE *yyout;
 %}
 %union {
     int iValue;                 /* integer value */
@@ -102,8 +103,8 @@ expr_list:
 param_list:
   type ID                 { $$ = argu($1,$2,0); }
   | type ID '[' ']'       { $$ = argu($1,$2,1); }
-  | type ID ',' param_list  { $$ = argu_append($1,$2,$4,0); }
-  | type ID '[' ']' ',' param_list  { $$ = argu_append($1,$2,$6,1); }
+  | param_list ',' type ID    { $$ = argu_append($3,$4,$1,0); }
+  | param_list ',' type ID '[' ']'    { $$ = argu_append($3,$4,$1,1); }
   | { $$ = calloc(1,sizeof(argulist));}
   ;
 %%
@@ -237,6 +238,7 @@ void yyerror(char *s) {
 }
 int main(void) {
     yyin = fopen("input","r");
+    yyout = fopen("test.s","w");
     yyparse();
     return 0;
 }
