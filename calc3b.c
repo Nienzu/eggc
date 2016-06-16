@@ -13,12 +13,17 @@ int count=0;
 int in_while = 0;
 int sss[30]= {};
 stack *now;
+deflist *head;
+deflist *next ,*current;
+nodeType *start;
 static int trindex=0;
 char tr[5];
 char iflist[7] = "IF";
 static int srindex=0;
 char sr[5];
 int init=0;
+char now_function[30];
+
 
 stack *push(stack *node)
 {
@@ -46,6 +51,7 @@ int ex(nodeType *p)
     int label_IF;
     int label_WHILE;
     int size_array;
+    int id_type = -1;
     if(now == NULL) {
         now = malloc(sizeof(stack));
         now->down=now;
@@ -78,6 +84,7 @@ int ex(nodeType *p)
                 printf("%s:\n",p->funptr.name);
 
             }
+            strcpy(now_function,p->funptr.name);
             ex(p->funptr.op);
             if(strcmp(p->funptr.name, "idMain")==0) {
                 printf("\tli $v0, 10\n");
@@ -138,9 +145,49 @@ int ex(nodeType *p)
                         printf("\tb while%d\n",lbl_WHILE);
                     break;
                 case READ:
+                    current = head;
+                    while(strcmp(current->id_name,p->opr.op[0]->id.i) != 0 || strcmp(current->fun_name,now_function) != 0){
+                      if(current->next->next != NULL)
+                        current = current->next;
+                      else{
+                        current = current->next;
+                        break;
+                      }
+                    }
+                    id_type = current->type;
+                    if(id_type == 1){
+                      printf("\tli $v0, 5\n");
+                      printf("\tsyscall\n");
+                      printf("\tsw $v0, %s\n",p->opr.op[0]->id.i);
+                    }
+                    else if(id_type == 0){
+                      printf("\tli $v0, 8\n");
+                      printf("\tli $a1, 1\n");
+                      printf("\rla $a0, %s\n",p->opr.op[0]->id.i);
+                      printf("\tsyscall\n");
+                    }
                     break;
                 case PRINT:
-                    printf("\tprint\n");
+                    current = head;
+                    while(strcmp(current->id_name,p->opr.op[0]->id.i) != 0 || strcmp(current->fun_name,now_function) != 0){
+                      if(current->next->next != NULL)
+                        current = current->next;
+                      else{
+                        current = current->next;
+                        break;
+                      }
+                    }
+                    id_type = current->type;
+                    if(id_type == 1){
+                      printf("\tli $v0, 1\n");
+                      printf("\tlw $a0, %s\n",p->opr.op[0]->id.i);
+                      printf("\tsyscall\n");
+                    }
+                    else if(id_type == 0){
+                      printf("\tli $v0, 4\n");
+                      printf("\tla $a0, %s\n",p->opr.op[0]->id.i);
+                      printf("\tsyscall\n");
+                    }
                     break;
                 case RETURN:
                     break;
@@ -161,7 +208,7 @@ int ex(nodeType *p)
                                 printf("\tsw %s, %s\n", now->down->id, p->opr.op[0]->id.i);
                                 break;
                             case 3: //array
-                                printf("\tsw %d(%s), %s\n", now->down->is_array, now->down->id, p->opr.op[0]->id.i);
+                                printf("\tsw %d(%s), %s\n", now->down->is_array*4, now->down->id, p->opr.op[0]->id.i);
                             default:
                                 printf("ERROR");
                                 break;
@@ -169,18 +216,18 @@ int ex(nodeType *p)
                     } else {
                         switch(now->down->stacktype) {
                             case 0:
-                                printf("\tlw $s%d, %d(%s)\n", srindex, p->opr.op[0]->id.is_array, p->opr.op[0]->id.i);
+                                printf("\tlw $s%d, %d(%s)\n", srindex, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
                                 printf("\tmove $s%d, %d\n", srindex, now->down->con);
-                                printf("\tsw $s%d, %d(%s)\n", srindex, p->opr.op[0]->id.is_array, p->opr.op[0]->id.i);
+                                printf("\tsw $s%d, %d(%s)\n", srindex, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
                                 break;
                             case 1:
-                                printf("\tsw %s, %d(%s)\n", now->down->id, p->opr.op[0]->id.is_array, p->opr.op[0]->id.i);
+                                printf("\tsw %s, %d(%s)\n", now->down->id, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
                                 break;
                             case 2:
-                                printf("\tsw %s, %d(%s)\n", now->down->id, p->opr.op[0]->id.is_array, p->opr.op[0]->id.i);
+                                printf("\tsw %s, %d(%s)\n", now->down->id, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
                                 break;
                             case 3: //array
-                                printf("\tsw %d(%s), %d(%s)\n", now->down->is_array, now->down->id, p->opr.op[0]->id.is_array, p->opr.op[0]->id.i);
+                                printf("\tsw %d(%s), %d(%s)\n", now->down->is_array*4, now->down->id, p->opr.op[0]->id.is_array*4, p->opr.op[0]->id.i);
                             default:
                                 printf("ERROR");
                                 break;
@@ -1137,12 +1184,29 @@ int ex_def(nodeType *p)
         printf("\t.data\n");
         count++;
     }
+    if(head == NULL){
+      head = malloc(sizeof(deflist));
+      current = head;
+    }
     if (!p) return 0;
     switch(p->type) {
         case typeFun:
+            strcpy(now_function,p->funptr.name);
             ex_def(p->funptr.op);
             break;
         case typeDef:
+            next = malloc(sizeof(deflist));
+            next->type = -1;
+            current->fun_name = strdup(now_function);
+            current->id_name = strdup(p->def.name);
+            current->is_array = p->def.is_array;
+            current->next = next;
+            if(strcmp(p->def.type, "int") == 0) {
+                current->type = 1;
+            } else {
+                current->type = 0;
+            }
+            current = next;
             printf("%s:\t",p->def.name);
             if(p->def.is_array == -1) {
                 if(strcmp(p->def.type, "int") == 0) {

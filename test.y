@@ -40,7 +40,7 @@ extern FILE *yyin;
 %type <nPtr> function block stmt expr expr_list stmt_list
 %%
 program:
-  function                {ex_def($1);ex($1); freeNode($1);exit(0); }
+  function                {ex_def($1);ex($1);freeNode($1);exit(0); }
   ;
 function:
     function block         { $$ = opr(';', 2, $1, $2); }

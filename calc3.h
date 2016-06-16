@@ -55,3 +55,11 @@ typedef struct stackNodeType{
 	struct stackNodeType *down;
   int is_array;
 }stack;
+
+typedef struct defNodeList{
+  char *id_name;
+  int type;
+  int is_array;
+  char *fun_name;
+  struct defNodeList *next;
+}deflist;

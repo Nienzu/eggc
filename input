@@ -1,7 +1,13 @@
+int idFunction(){
+  int idXaa;
+  int idXbb[2];
+  char idXcc[3];
+}
 int idMain(){
-  idXsss = 0;
-  while(idXsss<10){
-	idXsss = idXsss + 1;
-  }
+  int idXsss;
+  char idXccc;
+  print idXsss;
+  print idXbb[2];
+  print idXccc;
   return 0;
 }
