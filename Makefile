@@ -7,5 +7,7 @@ test.tab.o: test.y
 lex.yy.o: test.lex
 	flex test.lex
 	gcc -g -c lex.yy.c
+clean:
+	rm -rf lex.yy.* test.output test.tab.* mycop
 
 

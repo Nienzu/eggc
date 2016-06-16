@@ -1,3 +1,0 @@
-move $s0, 1 -> li $s0, 1 (imm must use li)
-lw $s0, $t0 -> move $s0, $t0 
-	register should use move to transfer value()
