@@ -266,7 +266,7 @@ int ex(nodeType *p)
                             case 1:
                                 fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
                                 if(now->down->id[0] == '$')
-                                  fprintf(yyout,"\tmove $s%d, %s_%s\n", srindex+1, now->down->id);
+                                  fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, now->down->id);
                                 else
                                   fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
@@ -274,7 +274,7 @@ int ex(nodeType *p)
                             case 2:
                                 fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
                                 if(now->down->id[0] == '$')
-                                  fprintf(yyout,"\tmove $s%d, %s_%s\n", srindex+1, now->down->id);
+                                  fprintf(yyout,"\tmove $s%d, %%s\n", srindex+1, now->down->id);
                                 else
                                   fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
@@ -308,7 +308,7 @@ int ex(nodeType *p)
                 default:
                     ex(p->opr.op[0]);
                     ex(p->opr.op[1]);
-                    assmebly_routine(p->opr.oper);  
+                    assmebly_routine(p->opr.oper);
             }
     }
     return 0;
