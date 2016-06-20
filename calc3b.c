@@ -274,7 +274,7 @@ int ex(nodeType *p)
                             case 2:
                                 fprintf(yyout,"\tla $s%d, %s_%s\n", srindex, now_function, p->opr.op[0]->id.i);
                                 if(now->down->id[0] == '$')
-                                  fprintf(yyout,"\tmove $s%d, %%s\n", srindex+1, now->down->id);
+                                  fprintf(yyout,"\tmove $s%d, %s\n", srindex+1, now->down->id);
                                 else
                                   fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex+1, now_function,now->down->id);
                                 fprintf(yyout,"\tsw $s%d, %d($s%d)\n", srindex+1, p->opr.op[0]->id.is_array*4,srindex);
