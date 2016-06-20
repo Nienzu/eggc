@@ -320,6 +320,7 @@ int ex_def(nodeType *p)
         start = p;
         argu_array = calloc(fun_count,sizeof(arguRecord));
         fprintf(yyout,"\t.data\n");
+        count++;
     }
     if(head == NULL){
       head = malloc(sizeof(deflist));
