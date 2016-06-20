@@ -190,6 +190,9 @@ int ex(nodeType *p)
                       fprintf(yyout,"\tlw $a0, %s_%s\n",now_function,p->opr.op[0]->id.i);
                       fprintf(yyout,"\tsyscall\n");
                     }
+                    fprintf(yyout,"\tli $v0, 4\n");
+                    fprintf(yyout,"\tla $a0, newline\n");
+                    fprintf(yyout,"\tsyscall\n");
                     break;
                 case RETURN:
                     if(p->opr.op[0]->type == typeCon)
@@ -320,6 +323,7 @@ int ex_def(nodeType *p)
         start = p;
         argu_array = calloc(fun_count,sizeof(arguRecord));
         fprintf(yyout,"\t.data\n");
+        fprintf(yyout,"newline: .asciiz \"\\n\"\n");
         count++;
     }
     if(head == NULL){

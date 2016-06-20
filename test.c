@@ -1,5 +1,3 @@
-
-
 int idMain ( )
 {
     int idA ;
