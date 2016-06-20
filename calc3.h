@@ -68,3 +68,5 @@ typedef struct arguReTag{
   char *fun_name;
   argulist *argu;
 }arguRecord;
+
+void assmebly_routine(int what);
