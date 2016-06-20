@@ -397,13 +397,13 @@ int ex_def(nodeType *p)
     return 0;
 }
 
-void assmebly_routine(int what){
+int assmebly_routine(int whatF){
   int op1;
   char *op2;
   int typeop1;
   int size_array;
   char *inst;
-  switch(what){
+  switch(whatF){
     case '+':
       inst="add";
       break;
@@ -438,7 +438,10 @@ void assmebly_routine(int what){
       inst="and";
       break;
     case OR:
-      inst="OR";
+      inst="or";
+      break;
+    default:
+      return 0;
       break;
   }
 
