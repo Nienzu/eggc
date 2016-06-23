@@ -337,40 +337,64 @@ int ex(nodeType *p)
                     break;
                 case UMINUS:
                     ex(p->opr.op[0]);
-                    printf("\tneg\n");
+                    sprintf(tr,"$t%d", trindex);
+                    switch (now->down->stacktype) {
+                      case 0:
+                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                          fprintf(yyout,"\tneg %s, $s%d\n",tr,srindex);
+                        break;
+                      case 1:
+                          if(now->down->id[0] == '$'){
+                            fprintf(yyout,"\tneg %s, %s\n",tr,now->down->id);
+                          }
+                          else{
+                            fprintf(yyout,"\tlw $s%d, %s_%s\n",srindex,now_function,now->down->id);
+                            fprintf(yyout,"\tneg %s, $s%d\n",tr,srindex);
+                          }
+                        break;
+                      case 3:
+                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex,now_function,now->down->id);
+                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1,now->down->is_array*4,srindex);
+                          fprintf(yyout,"\tneg %s, $s%d\n",tr,srindex+1);
+                        break;
+                      default:
+                        break;
+                    }
+                    pop(now);
+                    now->stacktype=1;
+                    now->id = strdup(tr);
+                    now = push(now);
+                    trindex++;
                     break;
                 case '!':
                     sprintf(tr,"$t%d", trindex);
-                    switch(now->down->stacktype) {
-                        case 0:
-                            fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
-                            fprintf(yyout,"\tnot %s, $s%d\n",tr, srindex);
-                            pop(now);
-                            break;
-                        case 1:
-                            if(now->down->id[0] == '$')
-                                fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
-                            else
-                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
-                            srindex++;
-                            fprintf(yyout,"\tnot %s, $s%d\n", tr, srindex);
-                            srindex--;
-                            pop(now);
-                            break;
-                        case 3:
-                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
-                            fprintf(yyout,"\tnot %s, $s%d\n", tr, srindex);
-                            pop(now);
-                            break;
-                        default:
-                            break;
+                    switch (now->down->stacktype) {
+                      case 0:
+                          fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                          fprintf(yyout,"\tnot %s, $s%d\n",tr,srindex);
+                        break;
+                      case 1:
+                          if(now->down->id[0] == '$'){
+                            fprintf(yyout,"\tnot %s, %s\n",tr,now->down->id);
+                          }
+                          else{
+                            fprintf(yyout,"\tlw $s%d, %s_%s\n",srindex,now_function,now->down->id);
+                            fprintf(yyout,"\tnot %s, $s%d\n",tr,srindex);
+                          }
+                        break;
+                      case 3:
+                          fprintf(yyout,"\tla $s%d, %s_%s\n",srindex,now_function,now->down->id);
+                          fprintf(yyout,"\tlw $s%d, %d($s%d)\n",srindex+1,now->down->is_array*4,srindex);
+                          fprintf(yyout,"\tnot %s, $s%d\n",tr,srindex+1);
+                        break;
+                      default:
+                        break;
                     }
-                    count--;
+                    pop(now);
                     now->stacktype=1;
-                    sprintf(tr,"$t%d", trindex);
-                    trindex++;
                     now->id = strdup(tr);
                     now = push(now);
+                    trindex++;
                     break;
                 default:
                     ex(p->opr.op[0]);

@@ -5,8 +5,16 @@ int idFunction(int idAs, int idBs){
 int idMain ( ) {
     int idA ;
 		int idB;
-    idA = 1;
-    print idA;
+		idB = 3;
+    idA = 0;
+		if(!idA){
+			print idA;
+		}
+		else{
+			print idB;
+		}
+
+
 		idB = idFunction(3, 5);
     return 0 ;
 }
