@@ -1,9 +1,0 @@
-int idMain(){
-  int idXsss[10];
-  int idX;
-  idXsss[3] = 1;
-  idXsss[4] = 2;
-  idX = idXsss[3] + idXsss[4];
-  print idX;
-  return 0;
-}

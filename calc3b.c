@@ -29,6 +29,8 @@ extern int fun_count;
 arguRecord *argu_array;
 extern FILE *yyout;
 
+int init_def=0;
+
 
 stack *push(stack *node)
 {
@@ -49,7 +51,11 @@ void pop(stack *node)
 
 int ex(nodeType *p)
 {
-
+    int op1;
+    char *op2;
+    int typeop1;
+    int size_array;
+    char *inst;
     char tmp;
     int label_IF;
     int label_WHILE;
@@ -172,13 +178,16 @@ int ex(nodeType *p)
                 case PRINT:
                     current = head;
                     while(strcmp(current->id_name,p->opr.op[0]->id.i) != 0 || strcmp(current->fun_name,now_function) != 0){
-                      if(current->next->next != NULL)
+                      if(current->next->next != NULL){
                         current = current->next;
+                      }
                       else{
                         current = current->next;
+
                         break;
                       }
                     }
+
                     id_type = current->type;
                     if(id_type == 1){
                       fprintf(yyout,"\tli $v0, 1\n");
@@ -202,31 +211,57 @@ int ex(nodeType *p)
                     break;
                 case '%':
                     i = 0;
-                    while(strcmp(argu_array[i].fun_name,p->opr.op[0]->id.i) != 0)
+
+                    while(strcmp(argu_array[i].fun_name,p->opr.op[0]->id.i) != 0){
                       ++i;
-                    if(p->opr.op[1]->type != typeOpr){
-                      fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,p->opr.op[1]->id.i);
-                      fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,argu_array[i].argu->id);
+                      if(argu_array[i].argu==NULL)
+                        break;
                     }
-                    else{
+
+                if(argu_array[i].argu!=NULL){
+                  //  printf("%d\n",init_def++);
+                    if(p->opr.op[1]->type != typeOpr){
+                      if(p->opr.op[1]->type == typeId){
+                        fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,p->opr.op[1]->id.i);
+                        fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,argu_array[i].argu->id);
+                      }
+                      else {
+                        fprintf(yyout,"\tli $t0, %d\n",p->opr.op[1]->con.value);
+                        fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,argu_array[i].argu->id);
+                      }
+                    }
+                    else {
                       nodeType *t = p->opr.op[1];
                       argulist *a = argu_array[i].argu;
                       while(t->type == typeOpr){
-                        fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,t->opr.op[0]->id.i);
-                        fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                        if(t->opr.op[0]->type == typeId){
+                          fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,t->opr.op[0]->id.i);
+                          fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                        }
+                        else {
+                          fprintf(yyout,"\tli $t0, %d\n",t->opr.op[0]->con.value);
+                          fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                        }
                         t = t->opr.op[1];
                         a = a->next;
                       }
-                      fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,t->id.i);
-                      fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                      if(t->type == typeId){
+                        fprintf(yyout,"\tlw $t0, %s_%s\n",now_function,t->id.i);
+                        fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                      }
+                      else {
+                        fprintf(yyout,"\tli $t0, %d\n",t->con.value);
+                        fprintf(yyout,"\tsw $t0, %s_%s\n", argu_array[i].fun_name,a->id);
+                      }
+
                     }
                     fprintf(yyout,"\tjal %s\n",p->opr.op[0]->id.i);
                     now->stacktype = 4;
                     now = push(now);
+                  }
                     break;
                 case '=':
                     ex(p->opr.op[1]);
-                    //printf("\t %s, ", p->opr.op[0]->id.i);
                     if(p->opr.op[0]->id.is_array == -1) {
                         switch(now->down->stacktype) {
                             case 0:
@@ -305,13 +340,44 @@ int ex(nodeType *p)
                     printf("\tneg\n");
                     break;
                 case '!':
-                    ex(p->opr.op[0]);
-                    printf("\tnot\n");
+                    sprintf(tr,"$t%d", trindex);
+                    switch(now->down->stacktype) {
+                        case 0:
+                            fprintf(yyout,"\tli $s%d, %d\n",srindex,now->down->con);
+                            fprintf(yyout,"\tnot %s, $s%d\n",tr, srindex);
+                            pop(now);
+                            break;
+                        case 1:
+                            if(now->down->id[0] == '$')
+                                fprintf(yyout,"\tmove $s%d, %s\n", srindex, now->down->id);
+                            else
+                                fprintf(yyout,"\tlw $s%d, %s_%s\n", srindex, now_function,now->down->id);
+                            srindex++;
+                            fprintf(yyout,"\tnot %s, $s%d\n", tr, srindex);
+                            srindex--;
+                            pop(now);
+                            break;
+                        case 3:
+                            fprintf(yyout,"\tla $s%d, %s_%s\n",srindex, now_function, now->down->id);
+                            fprintf(yyout,"\tnot %s, $s%d\n", tr, srindex);
+                            pop(now);
+                            break;
+                        default:
+                            break;
+                    }
+                    count--;
+                    now->stacktype=1;
+                    sprintf(tr,"$t%d", trindex);
+                    trindex++;
+                    now->id = strdup(tr);
+                    now = push(now);
                     break;
                 default:
                     ex(p->opr.op[0]);
                     ex(p->opr.op[1]);
                     assmebly_routine(p->opr.oper);
+                    break;
+
             }
     }
     return 0;
@@ -319,18 +385,19 @@ int ex(nodeType *p)
 int ex_def(nodeType *p)
 {
     argulist *a;
-    if(count==0) {
+    if(init_def==0) {
         start = p;
         argu_array = calloc(fun_count,sizeof(arguRecord));
         fprintf(yyout,"\t.data\n");
         fprintf(yyout,"newline: .asciiz \"\\n\"\n");
-        count++;
+        init_def++;
     }
     if(head == NULL){
       head = malloc(sizeof(deflist));
       current = head;
     }
     if (!p) return 0;
+    int i=0;
     switch(p->type) {
         case typeFun:
             bzero(now_function,30);
@@ -338,6 +405,13 @@ int ex_def(nodeType *p)
             a = p->funptr.argu;
             argu_array[count].fun_name = strdup(now_function);
             argu_array[count].argu = a;
+            /*
+            if(a->id!=NULL)
+              for(;argu_array[i].argu!=NULL;){
+                printf("%s\n",argu_array[count].argu->id);
+                argu_array[i].argu = argu_array[i].argu->next;
+              }
+              */
             ++count;
             while(a->id!=NULL){
               fprintf(yyout,"%s_%s:\t",now_function,a->id);
@@ -354,6 +428,18 @@ int ex_def(nodeType *p)
                       fprintf(yyout,".space\t%d\n", 32);
                   }
               }
+              next = malloc(sizeof(deflist));
+              next->type = -1;
+              current->fun_name = strdup(now_function);
+              current->id_name = strdup(a->id);
+              current->is_array = a->array;
+              current->next = next;
+              if(strcmp(a->type, "int") == 0) {
+                  current->type = 1;
+              } else {
+                  current->type = 0;
+              }
+              current = next;
               if(a->next != NULL)
                 a = a->next;
               else
